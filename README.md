@@ -1,6 +1,6 @@
 # Veracode Findings API Export
 
-A Python script to export vulnerability findings from Veracode using the **Findings REST API**. Iterates through all applications in your Veracode account and retrieves findings for each one, with optional sandbox coverage and IaC (Infrastructure as Code) scan results.
+A Python script to export vulnerability findings from Veracode using multiple APIs. Iterates through all applications in your Veracode account and retrieves findings for each one, with optional sandbox coverage and IaC (Infrastructure as Code) scan results.
 
 ## Prerequisites
 
