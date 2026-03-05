@@ -68,12 +68,31 @@ class RateLimiter:
 
 
 def strip_html_tags(text):
-    """Remove HTML tags and decode HTML entities from text."""
+    """Remove HTML tags and decode HTML entities from text. Also handles base64-encoded HTML."""
     if not text:
         return text
     
+    # Try to detect and decode base64-encoded content
+    # Base64 strings are typically long and don't contain spaces
+    if len(text) > 100 and ' ' not in text and text.isascii():
+        try:
+            import base64
+            # Try to decode as base64
+            decoded_bytes = base64.b64decode(text, validate=True)
+            # Try to decode as UTF-8
+            decoded_text = decoded_bytes.decode('utf-8', errors='ignore')
+            # If it looks like HTML, use the decoded version
+            if '<' in decoded_text and '>' in decoded_text:
+                text = decoded_text
+        except Exception:
+            # Not base64 or failed to decode, use original text
+            pass
+    
+    # Remove HTML tags
     text = re.sub(r'<[^>]+>', '', text)
+    # Decode HTML entities
     text = html.unescape(text)
+    # Normalize whitespace
     text = re.sub(r'\s+', ' ', text).strip()
     
     return text
@@ -682,7 +701,7 @@ def generate_veracode_link(app_guid, scan_type, finding_details, sandbox_guid=No
         if dynamic_analysis_id:
             return f"https://web.analysiscenter.veracode.com/was/#/analysis/{dynamic_analysis_id}/scans"
 
-        # Check for DAST (Legacy Dynamic Analysis) scan URL
+        # Check for DAST scan URL
         dast_scan_url = None
         if finding_obj:
             dast_scan_url = finding_obj.get("_dast_scan_url")
