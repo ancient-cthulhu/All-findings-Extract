@@ -22,7 +22,7 @@ veracode_api_key_secret = YOUR_API_KEY_SECRET
 
 ### Python Requirements
 ```bash
-pip install requests veracode-api-signing
+pip install requests veracode-api-signing veracode-api-py
 ```
 
 ## Features
@@ -55,9 +55,9 @@ python script.py --app-name "App1,App2,App3"
 python script.py --include-sandbox --severity-gte 4 --status OPEN
 ```
 
-**With IaC scans (requires browser cookies):**
+**Limit to a single scan type:**
 ```bash
-python script.py --include-iac --cookies-file cookies.txt
+python script.py --scan-type IAC
 ```
 
 ## Command-Line Arguments
@@ -73,6 +73,7 @@ python script.py --include-iac --cookies-file cookies.txt
 |`--cwe`            |None    |CWE ID (single or comma-separated)                                  |
 |`--status`         |None    |OPEN or CLOSED                                                      |
 |`--include-sandbox`|False   |Include sandbox findings                                            |
+|`--sleep`          |0.01    |Delay in seconds between paged requests                             |
 |`--max-workers`    |10      |Concurrent threads for parallel processing                          |
 |`--rate-limit`     |10.0    |Max API requests/second                                             |
 |`--max-apps`       |None    |Limit apps processed (testing)                                      |
@@ -80,27 +81,27 @@ python script.py --include-iac --cookies-file cookies.txt
 
 ## IaC (Container Security) Integration
 
-IaC scans require browser session cookies (not available via standard API). The script now fetches IaC data automatically when `--include-iac` is specified.
+IaC findings are fetched automatically on every run. No browser cookies are needed. The script exchanges your existing HMAC API credentials for a short-lived session token (`/api/authn/v2/principal`) and uses it against the Container Security API.
 
-### Getting IaC Data
-
-**Step 1: Extract browser cookies**
-1. Log into Veracode Platform (https://analysiscenter.veracode.com)
-2. Press F12 → Network tab → Refresh page
-3. Click any request → Headers → Copy `Cookie:` value
-4. Save to `cookies.txt`
-
-**Step 2: Run with IaC enabled**
+**Default run (includes IaC):**
 ```bash
-python script.py --include-iac --cookies-file cookies.txt
+python script.py
+```
+
+**IaC only:**
+```bash
+python script.py --scan-type IAC
+```
+
+**Exclude IaC:**
+```bash
+python script.py --scan-type STATIC,DYNAMIC,MANUAL,SCA
 ```
 
 **Filter specific applications:**
 ```bash
-python script.py --include-iac --cookies-file cookies.txt --app-name "App1,App2"
+python script.py --scan-type IAC --app-name "App1,App2"
 ```
-
-**Note:** Cookies expire after a few hours. Get fresh cookies by logging into the Veracode Platform again.
 
 ## Output Files
 
@@ -226,8 +227,8 @@ python script.py --max-workers 30 --rate-limit 30
    - Maps Dynamic findings to Dynamic Analysis IDs
 
 5. **IaC Integration**
-   - Fetches IaC findings directly from Veracode Container Security API using browser cookies
-   - Validates cookie authentication is valid
+   - Requests a principal session token using the configured HMAC credentials
+   - Fetches IaC findings directly from the Veracode Container Security API
    - Retrieves detailed findings for all IaC scans
    - Matches IaC asset names to Veracode applications using fuzzy logic
    - Creates placeholder entries for unmatched IaC assets
@@ -253,6 +254,11 @@ python script.py --max-workers 30 --rate-limit 30
 - Check API credentials file exists and has correct format
 - Verify account has Results API role (Service Account) or Reviewer/Security Lead role (User Account)
 - Confirm credentials file location: `~/.veracode/credentials` (Mac/Linux) or `C:\Users\<username>\.veracode\credentials` (Windows)
+
+**IaC authentication failed** 
+- The script requests a session token via `/api/authn/v2/principal` using your HMAC credentials
+- Confirm the account has access to Container Security / IaC scans in the platform
+- Confirm `veracode-api-py` is installed (the token call uses `APIHelper`)
 
 **0 applications returned** 
 - User accounts only see applications assigned to their teams/business units
@@ -325,9 +331,9 @@ python script.py --max-apps 5 --output test.csv
 
 ## Common Use Cases
 
-**Specific applications with all scan types including IaC:**
+**Specific applications, all scan types including IaC, plus sandboxes:**
 ```bash
-python script.py --app-name "App1,App2" --include-iac --cookies-file cookies.txt --include-sandbox
+python script.py --app-name "App1,App2" --include-sandbox
 ```
 
 **High severity open findings only:**
